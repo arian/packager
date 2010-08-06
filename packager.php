@@ -118,7 +118,7 @@ Class Packager {
 		$length = count($exploded);
 		if ($length == 1) return array($default, $exploded[0]);
 		if (empty($exploded[0])) return array($default, $exploded[1]);
-		return array($exploded[0], $exploded[1]);
+		return array(array_shift(explode(':', $exploded[0], 2)), $exploded[1]);
 	}
 	
 	private function replace_build($package_path, $file){
