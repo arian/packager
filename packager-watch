@@ -1,0 +1,53 @@
+#!/bin/bash
+#
+# Requires inotify-tools to be installed.
+
+usage(){
+	echo "Watches packages' directories for changes and executes"
+	echo 'a command when detecting a change.'
+	echo
+	echo 'This script requires inotify-tools to be installed.'
+	echo
+	echo "Usage: $0 <command> <packages...>"
+	echo
+	echo 'arguments:'
+	echo '  <command>  The command to execute when detecting a change.'
+	echo '  <packages> Packages (registered to ~/.package.yml) to'
+	echo '             watch.'
+	echo
+	echo 'example:'
+	echo "  packager-watch 'build Core/Fx' Core More"
+}
+
+if [ "$1" == '-h' -o "$1" == '--help' ]; then
+	usage
+	exit
+fi
+
+LIST=$(cat ~/.packages.yml)
+
+getpackagedirs(){
+	for PACKAGE in "$@"; do
+		PKG=$(sed -n "/^$PACKAGE:/ { s/^$PACKAGE://; />$/n; s/^ \+//; p }" <<< "$LIST")
+		if [ -f "$PKG" ]; then
+			PKG=$(dirname "$PKG")
+		fi
+		if [ -d "$PKG" ]; then
+			echo "$PKG"
+		fi
+	done
+}
+
+COMMAND="$1"
+
+shift
+
+DIRS="$(getpackagedirs "$@")"
+
+echo -e "Watching directories:\n$DIRS" >&2
+
+while true; do
+	inotifywait -r --exclude '.*(\.sw\w+|~)$' -e close_write -e move -e create -e delete $DIRS &> /dev/null
+	sh -c "./packager $COMMAND"
+done
+
